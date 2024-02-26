@@ -1,0 +1,388 @@
+---
+always_allow_html: yes
+output:
+  word_document:
+    reference_docx: template.docx
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+library(reshape2)
+library(flextable)
+library(GGally)
+library(factoextra)
+library(FactoMineR)
+
+library(fitdistrplus)
+library(MASS)
+library(survival)
+library(npsurv)
+library(lsei)
+library(SuppDists)
+library(dplyr)
+knitr::opts_chunk$set(echo = FALSE,warning=FALSE, message=FALSE)
+```
+
+```{r, echo=FALSE}
+#--设置污染物名称、食药物质名称、污染物的LOD值、转移率以及单位等
+CurrentName <- knitr::current_input()
+CurrentName <- "铝-金银花.Rmd" #需注释需注释需注释
+CurrentName <- sub(".Rmd","",CurrentName)
+Pollutantname<-gsub("-.*", "", CurrentName)
+TCMname<-gsub(".*-", "", CurrentName)
+
+
+Pollunit<-"mg/kg"
+expunit<-"μg/kg bw"
+#Pb、Cd、As、Hg、Cu的t值分别为14%、14%、35%、24%、14%.没有Al的转移率t值，根据风险高估，转移率为0.35
+metal_data <- data.frame(
+  Metal = c("铅", "镉", "砷", "汞", "铜", "铝","铬"),
+  Transferrate = c(0.14, 0.14, 0.35, 0.24, 0.14, 0.35,0.35)
+)
+
+# 使用Pollutantname读取Metal中的Transferrate值
+t <- metal_data$Transferrate[match(Pollutantname, metal_data$Metal)]
+
+# 创建LOD数据框
+metal_limits <- data.frame(
+  Metal = c("铝", "钒", "铬", "锰", "镍", "铜", "砷", "钼", "镉", "钡", "汞", "铅"),
+  Limits_of_Detection = c(0.198, 0.131, 0.135, 0.026, 0.033, 0.022, 0.015, 0.096, 0.002, 0.079, 0.014, 0.021)
+)
+LOD<-metal_limits$Limits_of_Detection[match(Pollutantname, metal_limits$Metal)]
+
+```
+
+
+```{r, echo=FALSE}
+#--上传数据
+
+TCMPollutantname<-paste(Pollutantname,TCMname,".csv",sep = "")
+Consumptionname<-paste("./Consum/",TCMname,".csv",sep = "")
+Consumptiondata<-read.csv(Consumptionname,encoding = "UTF-8")
+Pollutantdata<-read.csv(paste0("./Poll/",TCMPollutantname))
+abbreviations<-read.csv("缩略语.csv",encoding = "UTF-8")
+```
+
+```{r,echo=FALSE}
+#--提取出需要用到的数据
+
+#1.污染物浓度数据
+Poll<-sort(Pollutantdata[,1])
+#2.年消费量
+ycs<-Consumptiondata[,2]
+#3.年摄入天数
+day<-Consumptiondata[,3]
+#4.日摄入量
+daycs<-Consumptiondata[,4]
+```
+
+```{r,echo=FALSE}
+#--消费量的特征描述：年、天、日消费量的P5、P50、P95分位数
+
+#年消费量分位数
+ycsquan<-c(quantile(ycs,0.05),quantile(ycs,0.5),quantile(ycs,0.95),round(mean(ycs),1))
+#年摄入天数分位数
+dayquan<-c(quantile(day,0.05),quantile(day,0.5),quantile(day,0.95),round(mean(day),1))
+#日摄入量分位数
+daycsquan<-c(quantile(daycs,0.05),quantile(daycs,0.5),quantile(daycs,0.95),round(mean(daycs),1))
+AA=c("P5","P50","P95","平均值")
+csquantable <- data.frame( BB=ycsquan,
+                 CC=dayquan,
+                 DD=daycsquan,
+                 row.names=NULL,
+                 stringsAsFactors = F)
+csquantable<-cbind(AA,csquantable)
+colnames(csquantable)<-c("分位数","年摄入量（g/y）","摄入天数（d）","每日摄入量（g/d）")
+```
+
+```{r,echo=FALSE}
+#--根据污染物浓度数据，确定最佳分布，再随机模拟服从该分布的长度为10000的污染物数据
+
+Pollnum<-length(Poll) #污染物浓度数据长度
+# 将"<"和未检出的行改为0
+# 将"<"和未检出的行改为0
+Poll <- ifelse(grepl("<", Poll) | Poll == "未检出", 0, as.numeric(Poll))
+Pollpos<-Poll[which(Poll!=0)] #阳性污染物浓度数据
+Pollposnum<-length(Pollpos)#污染物浓度不为0(即有检出值)长度
+#阳性率即检出率
+Pp<-round(Pollposnum/Pollnum,4)
+Pppercent<-Pp*100
+#拟合最佳分布参数****手动 设置从concenn1参数nu和lambda
+#descdist(Pollpos,discrete = FALSE)
+#fitlnorm<-fitdist(Pollpos,"lnorm",start=list(meanlog = 5.2646368, sdlog = 0.4082))
+#fitgamma<-fitdist(Pollpos,"gamma")
+#fitexp<-fitdist(Pollpos,"exp")
+abc<-fitdist(Pollpos,"lnorm")#说明阳性数据近似服从均值为5.2646，标准差为0.4082的对数正态分布
+Pollposmax<-round(max(Pollpos),1)  #最大阳性污染物浓度数值
+Pollposp50<-round(quantile(Pollpos,probs = 0.5),1)#阳性污染物浓度数据50%分位数
+Pollposp95<-round(quantile(Pollpos,probs = 0.95),1)#阳性污染物浓度数据95%分位数
+Pollposmean<-round(mean(Pollpos),1)#阳性污染物浓度数据均值
+#随机生成对数服从正态分布的阳性数据
+concenn1<-rlnorm(Pp*10000,meanlog =abc[["estimate"]][["meanlog"]], sdlog =abc[["estimate"]][["sdlog"]])
+#小于检出限LOD（即，检出值为0）的部分赋值LOD/2
+concenun1<-rep(LOD/2,(1-Pp)*10000)
+#concenn1<-sort(concenn1)
+#获得10000个污染数据
+concen<-c(concenun1,concenn1)
+```
+
+
+```{r,echo=FALSE}
+#--由于原始的消费量数据量较大，故从中随机抽取数据，形成数据长度为10000的消费量数据 
+
+numycs<-length(ycs)   #消费量数据长度
+#样本量大非参数抽样抽取10000个消费量数据
+set.seed(1)
+cs1 <- sample(ycs,size = 10000, replace = TRUE)
+```
+
+```{r,echo=FALSE}
+#暴露估算,365为全年天数，63为体重设置
+
+#浓度数据是降序的，消费量数据是随机的
+expore<-cs1*concen*t/(365*63)
+#获得暴露平均值、p50、p95
+expmean<-mean(expore)
+expp50<-quantile(expore,probs = 0.5)
+expp95<-quantile(expore,probs = 0.95)
+expmax<-max(expore)
+```
+
+```{r,echo=FALSE}
+#蒙特卡洛模拟，根据数据分布，生成10000条暴露量数据,并计算不同分位数值
+
+#迭代1000次，把剩下的999次计算获取，然后算90%置信区间，也可算95%置信区间
+for (i in 1:999)
+{
+set.seed(i)
+#改
+concenn1<-rlnorm(Pp*10000,meanlog = 5.2646368, sdlog = 0.4082)#污染物浓度
+concen<-c(concenun1,concenn1)#concenun1不是通过数据模拟生成，不需要修改
+cs1 <- sample(ycs,size = 10000, replace = TRUE)#消费量
+expore<-cbind(expore,cs1*concen*t/(365*63))#这里的concen没经过降序？？
+expmean<-cbind(expmean,mean(expore[,i+1]))
+expp50<-cbind(expp50,quantile(expore[,i+1],0.5))
+expp95<-cbind(expp95,quantile(expore[,i+1],0.95))
+}
+#计算分位数值
+expmeanp<-sort(expmean)
+expp50p<-sort(expp50)
+expp95p<-sort(expp95)
+expmeanpl<- round(quantile(expmeanp,0.025),3)
+expmeanpu<- round(quantile(expmeanp,0.975),3)
+expmeanpm<- round(mean(expmeanp),3)
+expp95pl<-round(quantile(expp95p,0.025),2)
+expp95pu<-round(quantile(expp95p,0.975),2)
+expp95pm<-round(mean(expp95p),2)
+expp50pl<- round(quantile(expp50p,0.025),4)
+expp50pu<- round(quantile(expp50p,0.975),4)
+expp50pm<- round(mean(expp50p),4)
+```
+
+```{r,echo=FALSE}
+#风险熵RQ=EXP/HBGV(HBGV为日摄入量ADI，当使用每周允许摄入量PTWI时需/7、使用每月允许摄入量PTMI时需/30)
+
+#铝的健康指导值PTWI=2，在计算风险熵时需/7
+TQmeanpl<- round(quantile(expmeanp,0.025)*7/(1000*2),4)
+TQmeanpu<- round(quantile(expmeanp,0.975)*7/(1000*2),4)
+TQmeanpm<- round(mean(expmeanp)*7/(1000*2),4)
+TQp95pl<-round(quantile(expp95p,0.025)*7/(1000*2),4)
+TQp95pu<-round(quantile(expp95p,0.975)*7/(1000*2),4)
+TQp95pm<-round(mean(expp95p)*7/(1000*2),4)
+TQp50pl<- round(quantile(expp50p,0.025)*7/(1000*2),4)
+TQp50pu<- round(quantile(expp50p,0.975)*7/(1000*2),4)
+TQp50pm<- round(mean(expp50p)*7/(1000*2),4)
+```
+
+:::{custom-style="title"}
+`r toString(TCMname)`中`r toString(Pollutantname)`的风险评估
+:::
+
+# 摘 要
+
+&emsp;&emsp;铝是人体非必需微量元素，摄入过多会引起生殖毒性、神经毒性等。2011年6月，在JECFA的第74次大会上，委员会依据30 mg/kg bw/day 的未观察到不良作用水平（NOAEL），并利用 100 倍的安全系数,将铝的 PTWI 修订为每周2 mg/kg bw。经过风险评估得到以下结论：（1）`r toString(Pollnum)`份`r toString(TCMname)`中`r toString(Pollutantname)`的检出率为`r toString(Pppercent)`%（`r toString(Pollposnum)`/`r toString(Pollnum)`）。`r toString(Pollutantname)`含量平均值、P50值、P95值分别为`r toString(Pollposmean)` `r toString(Pollunit)`，`r toString(Pollposp50)`  `r toString(Pollunit)`，`r toString(Pollposp95)` `r toString(Pollunit)`。（2）`r toString(TCMname)`中`r toString(Pollutantname)`的每日慢性暴露水平平均值、P50值、P95值分别为`r toString(expmeanpm)` `r toString(expunit)` ，`r toString(expp50pm)` `r toString(expunit)`，`r toString(expp95pm)` `r toString(expunit)`。（3）由`r toString(TCMname)`摄入带来的`r toString(Pollutantname)`风险熵平均值、P50值、P95值分别为`r toString(TQmeanpm)`、`r toString(TQp50pm)`、`r toString(TQp95pm)`。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露水平远远小于健康指导值，风险熵平均值和P95均小于0.02。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露风险较小。
+
+\newpage
+:::{custom-style="Abbre"}
+缩 略 语
+:::
+```{r}
+colnames(abbreviations)<-c("简写","英文全称","中文全称")
+abbreviations<-flextable(abbreviations)
+abbreviations<-width(abbreviations,j = 2:3,width = 1.8)
+abbreviations <- font(abbreviations,fontname = "Times New Roman", part = "all")
+abbreviations <- fontsize(abbreviations, size = 10.5, part = "all")
+
+abbreviations
+```
+
+\newpage
+
+
+:::{custom-style="Abbre"}
+\
+\
+\
+\
+
+致谢
+\
+\
+
+:::
+
+&emsp;&emsp;本报告由国家科技部资助；由上海市食品药品检验研究院为本次评估所用监测数据和中药消费量付出了辛勤劳动。得益于各相关单位的支持，本评估项目才得以顺利完成，在此表示由衷的感谢！
+
+
+
+
+\newpage
+
+# 1 中药材简介
+&emsp;&emsp;金银花为忍冬科植物忍冬*Lonicera japonica Thunb*的干燥花蕾或带初开的花。夏初花开放前采收，干燥。功能：清热解毒，疏散风热。主治：用于痈肿疔疮，喉痹，丹毒，热毒血痢，风热感冒，温病发热。用法用量：6～15g
+
+
+```{r child = '铝的危害表征.Rmd'} 
+
+``` 
+
+# 4 暴露评估
+
+
+## 4.1 `r toString(Pollutantname)`含量数据分析
+
+### 4.1.1 样品
+
+
+&emsp;&emsp;上海药材市场、饮片厂、医院、药店等随机采集了`r toString(TCMname)`样品`r toString(Pollnum)`份，采样后密封保存，实验室粉碎后4 ℃保存，尽快检测。
+
+### 4.1.2 检测方法
+
+
+&emsp;&emsp;参照《中国药典》2020年版四部收录的“电感耦合等离子体质谱法（ICP-MS）”进行测定。
+
+### 4.1.3 `r toString(TCMname)`中`r toString(Pollutantname)`的污染水平
+
+
+&emsp;&emsp;`r toString(Pollnum)`份`r toString(TCMname)`中`r toString(Pollutantname)`的检出率为`r toString(Pppercent)`%（`r toString(Pollposnum)`/`r toString(Pollnum)`），浓度范围分别为<`r toString(LOD)` ~`r toString(Pollposmax)` `r toString(Pollunit)`。阳性样本中`r toString(Pollutantname)`含量平均值、中位数、P95值分别为`r toString(Pollposmean)` `r toString(Pollunit)`，`r toString(Pollposp50)`  `r toString(Pollunit)`，`r toString(Pollposp95)` `r toString(Pollunit)`。
+
+## 4.2 `r toString(TCMname)`消费量数据分析
+
+### 4.2.1 `r toString(TCMname)`消费量调查
+
+
+&emsp;&emsp;`r toString(TCMname)`消费量数据来源于2019年上海三家大型中药饮片厂18岁及以上上海市居民的处方数据，调查内容包括：主要包括处方号（PN）、日期（Date）、姓名（Name）、天数（days）、中药名（CMN）、剂量（DD）等。摄入`r toString(TCMname)`的18岁及以上人数大约为`r toString(numycs)`人。
+
+
+### 4.2.2 消费量数据处理方法
+
+
+&emsp;&emsp;在数据清洗的过程中，已将中药的名称统一，故可对感兴趣的中药消费数据进行提取，并进行进一步分析。每日摄入量是指服用当日摄入量（CS）。由于数据没有社保号或身份证等唯一性识别号，本项目数据的唯一性识别号根据不同数据的完整情况，分别采用姓名+手机号，姓名+医院名称，姓名，其中姓名+医院或姓名存在重复性可能，消费量数据偏高。
+
+### 4.2.3 上海市`r toString(TCMname)`的消费水平
+
+
+&emsp;&emsp;2019年`r toString(TCMname)`的年摄入量P50值、P95值和平均值分别为`r toString(ycsquan[2])`、`r toString(ycsquan[3])`和`r toString(ycsquan[4])` g/y，摄入天数的P50值、P95值和平均值分别为`r toString(dayquan[2])`、`r toString(dayquan[3])`和`r toString(dayquan[4])` d，服用当日每日摄入量的P50值、P95值和平均值分别为`r toString(daycsquan[2])`、`r toString(daycsquan[3])`和`r toString(daycsquan[4])` g/d。
+
+
+:::{custom-style="figurename"}
+表1 `r toString(TCMname)`消费量分布情况表
+:::
+```{r}
+Csquantable<-flextable(csquantable)
+Csquantable <- font(Csquantable,fontname = "Times New Roman", part = "all")
+Csquantable <- fontsize(Csquantable, size = 10.5, part = "all")
+Csquantable
+```
+
+## 4.3 暴露评估
+### 4.3.1 暴露评估方法
+
+
+&emsp;&emsp;暴露概率评估方法有参数和非参数两类方法。参数方法是用适当理论分布（如对数正态分布、指数分布、伽马分布等）对污染物数据等参数进行拟合，b比较获得最优分布，对拟合的分布进行抽样模拟；非参数方法是指将具有代表性的较大容量原始观察数据作为经验分布，直接从中进行抽样模拟。本文以调查所得`r toString(TCMname)`消费量数据为基础，采用非参数抽样进行10000次随机抽样抽取消费量数据；以污染物数据拟合的最优分布为基础，对拟合的最优分布进行10000次随机抽样抽取`r toString(Pollutantname)`污染数据，将抽样得到的数据按照暴露公式计算方法进行10000次Monte Carlo模拟，获得`r toString(TCMname)`中`r toString(Pollutantname)`的暴露评估分布。
+
+
+
+&emsp;&emsp;该模型在R软件(版本4.0.2)中开发，采用1000次模拟× 10000次迭代，分别在不确定性维度和可变性维度上模拟`r toString(TCMname)`中`r toString(Pollutantname)`的风险。为了反映由于摄入`r toString(TCMname)`而导致`r toString(Pollutantname)`暴露风险的各种统计数据的不确定性，本研究使用每个模拟(10,000次迭代)的P50、P95和平均值作为点估计，以及1000次模拟的2.5和97.5个百分点创建相应的95%置信区间(CI)。
+
+
+&emsp;&emsp;`r toString(TCMname)`中`r toString(Pollutantname)`的慢性暴露水平EDI（`r toString(expunit)`）计算如下：
+$$ EDI=\frac{CS_Y*L_t*t}{BW*365}$$ 
+
+&emsp;&emsp;CS~Y~代表每年`r toString(TCMname)`的年摄入量（g/y）；BW代表人群体重（kg），这里取63 kg；t代表`r toString(Pollutantname)`的转移率；L~t~代表`r toString(TCMname)`中`r toString(Pollutantname)`的污染水平（`r toString(Pollunit)`）；EDI代表`r toString(TCMname)`中`r toString(Pollutantname)`慢性暴露水平（`r toString(expunit)`）。
+
+### 4.3.2 `r toString(TCMname)`中`r toString(Pollutantname)`的慢性暴露水平
+
+
+&emsp;&emsp;未检出浓度以检出限LOD/2计时，`r toString(TCMname)`中`r toString(Pollutantname)`的每日慢性暴露水平平均值`r toString(expmeanpm)` `r toString(expunit)` （95%IC: `r toString(expmeanpl)`-`r toString(expmeanpu)` `r toString(expunit)`，P50值`r toString(expp50pm)` `r toString(expunit)`（95%IC: `r toString(expp50pl)` - `r toString(expp50pu)` `r toString(expunit)`，P95值`r toString(expp95pm)` `r toString(expunit)` （95%IC: `r toString(expp95pl)`-`r toString(expp95pu)` `r toString(expunit)`）。
+
+```{r Shownothing, include=FALSE}
+h3<-hist(expore[,1],probability=F,xlab = expunit,breaks=500,col="blue")
+```
+
+```{r}
+h3$counts=h3$counts/sum(h3$counts)
+plot(h3,main="",
+     xlab= expunit,
+     ylab="Probability",col = "blue",border = T,
+     xlim = c(0,2*expp95pm),
+     ylim=c(0,max(h3$counts))*1.2
+)
+
+A12<-paste(c("p50 ","mean","p95 "),
+           c(round(expp50[1],3),round(expmean[1],3),round(expp95[1],3)),
+           sep=":")
+abline(v = c(expp50[1],expmean[1],expp95[1]),lty = c(2,3,4),lwd = c(2,2,2),col=c("green","orange","red"))
+legend("topright",
+       legend=A12,col=c("green","orange","red"),lty = c(2,3,4),lwd = c(1,1,1),cex=0.7)
+```
+
+
+:::{custom-style="figurename"}
+图1 `r toString(TCMname)`中`r toString(Pollutantname)`的慢性暴露水平
+:::
+
+# 5 风险特征描述
+&emsp;&emsp;本文风险评估使用了JECFA最新制定2 mg/kg bw/w的PTWI值，进行风险评估。由`r toString(TCMname)`摄入带来的`r toString(Pollutantname)`风险熵： RQ=EXP/HBGV。HBGV=PTWI/7。
+`r toString(TCMname)`中`r toString(Pollutantname)`的风险熵平均值`r toString(TQmeanpm)`（95%IC: `r toString(TQmeanpl)`-`r toString(TQmeanpu)`），P50值`r toString(TQp50pm)`（95%IC: `r toString(TQp50pl)` - `r toString(TQp50pu)`），P95值`r toString(TQp95pm)`（95%IC: `r toString(TQp95pl)`-`r toString(TQp95pu)`）。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露水平远远小于健康指导值，风险熵平均值和P95均小于0.02。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露风险较小。
+
+<br/>
+
+
+# 6 不确定性分析和建议
+
+
+(1) `r toString(TCMname)`中`r toString(Pollutantname)`监测数据
+
+
+&emsp;&emsp;污染水平的分析样本量为`r toString(Pollnum)`个，阳性样本为`r toString(Pollposnum)`个，不确定性来源于样本量。`r toString(Pollutantname)`在`r toString(TCMname)`药材转移到汤汁的转移率参考的文献的其他重金属的数据。
+
+
+(2) 消费量数据
+
+
+&emsp;&emsp;消费量数据来源于医院及饮片厂，主要以药用为主未考虑食用部分，其中医院部分数据唯一性识别号根据数据完整性分为三部分数据分别采用的是姓名+手机号，姓名+医院名称，姓名。其中姓名+医院名称和姓名存在重复情况，消费量数据一定程度高估。下一步可考虑，根据消费量数据要求扩大调查信息量和食品部分调查数据。
+\newline
+
+&emsp;&emsp;因消费量数据缺少姓名、性别、年龄等数据，无法对不同人群进行更为精准的评估。
+
+（3）样本代表性
+
+
+&emsp;&emsp;消费量和污染样本数据均来源于上海，如果了解更大区域情况需扩大调查。
+<br/>
+
+
+
+# 7 总结与建议
+&emsp;&emsp;铝是人体非必需微量元素，摄入过多会引起生殖毒性、神经毒性等。2011年6月，在JECFA的第74次大会上，委员会依据每日每公斤体重 30mg 的未观察到不良作用水平（NOAEL），并利用 100 倍的安全系数,将铝的 PTWI 修订为每周每公斤体重 2mg。经过风险评估得到以下结论：
+
+
+&emsp;&emsp;（1）`r toString(Pollnum)`份`r toString(TCMname)`中`r toString(Pollutantname)`的检出率为`r toString(Pppercent)`%（`r toString(Pollposnum)`/`r toString(Pollnum)`）。`r toString(Pollutantname)`含量平均值、中位数、P95值分别为`r toString(Pollposmean)` `r toString(Pollunit)`，`r toString(Pollposp50)`  `r toString(Pollunit)`，`r toString(Pollposp95)` `r toString(Pollunit)`。
+
+
+&emsp;&emsp;（2）`r toString(TCMname)`中`r toString(Pollutantname)`的每日慢性暴露水平平均值`r toString(expmeanpm)` `r toString(expunit)` ，P50值`r toString(expp50pm)` `r toString(expunit)`，P95值`r toString(expp95pm)` `r toString(expunit)` 。
+
+
+&emsp;&emsp;（3）由`r toString(TCMname)`摄入带来的`r toString(Pollutantname)`风险熵平均值`r toString(TQmeanpm)`，P50值为`r toString(TQp50pm)`，P95值为`r toString(TQp95pm)`。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露水平远远小于健康指导值，风险熵平均值和P95均小于0.02。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露风险较小。
