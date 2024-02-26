@@ -1,0 +1,11 @@
+---
+always_allow_html: yes
+output:
+  word_document:
+    reference_docx: template.docx
+  html_document:
+    df_print: paged
+---
+
+# 1 中药材简介
+&emsp;&emsp;金银花为忍冬科植物忍冬*Lonicera japonica Thunb*的干燥花蕾或带初开的花。夏初花开放前采收，干燥。功能：清热解毒，疏散风热。主治：用于痈肿疔疮，喉痹，丹毒，热毒血痢，风热感冒，温病发热。用法用量：6～15g

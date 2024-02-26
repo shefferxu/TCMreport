@@ -1,6 +1,13 @@
 # setwd("E:/deltawork/TCM data/数据分析结果/2019虹桥 康桥 万仕城/以医院姓名、手机号姓名和姓名为唯一性识别号")
 # data_frame_names <- list.files(pattern = "*.csv")       # Get all file names
-# data_frame_names <- data_frame_names[-5]                                    # Return file names to console
+# data_frame_names <- data_frame_names[-5]          
+mypath<-dirname(rstudioapi::getActiveDocumentContext()$path)
+setwd(mypath)
+options(encoding ="UTF-8")
+# 读取指定的 Rmd 文件
+rmd_file <- "template.Rmd"
+
+
 library("readxl")
 # TCM2019 <- NULL
 # options( java.parameters = "-Xmx5000m")
@@ -13,12 +20,29 @@ for (metal in Metal) {
     newRmd <- paste(metal, "-", herb, ".Rmd", sep = "")
     file.copy(currRmd, newRmd, overwrite = TRUE) 
     
+    content <- readLines(newRmd)
+    # 找到第三个 newpage 的位置
+    newpage_indices <- grep("newpage", content)
+    third_newpage_index <- newpage_indices[3]
+    # 在第三个 newpage 之后添加 r child 新模块
+    # 在第三个 newpage 之后添加 r child 新模块
+    new_content <- c(content[1:third_newpage_index],
+                     paste0("\n```{r child = '", herb, "介绍.Rmd'}\n"),
+                     "```",
+                     paste0("\n```{r child = '", metal, "的危害表征.Rmd'}\n"),
+                     "```",
+                     content[(third_newpage_index + 1):length(content)])
+    
+    # 将修改后的内容写回文件
+    writeLines(new_content, newRmd)
     # 渲染RMD文件并导出Word文件
-    srcfile <- newRmd
-    outdoc <- paste(metal, "-", herb, ".docx", sep = "")
-    rmarkdown::render(input = srcfile, output_format = "word_document", output_file = outdoc)
+    # srcfile <- newRmd
+    # outdoc <- paste(metal, "-", herb, ".docx", sep = "")
+    # rmarkdown::render(input = srcfile, output_format = "word_document", output_file = outdoc)
   }
 }
+
+
 # connect database
 # library(RMySQL)
 # conn <- dbConnect(MySQL(),user="root",
