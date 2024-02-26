@@ -1,0 +1,11 @@
+---
+always_allow_html: yes
+output:
+  word_document:
+    reference_docx: template.docx
+  html_document:
+    df_print: paged
+---
+
+# 1 中药材简介
+&emsp;&emsp;黄芪为豆科植物蒙古黄芪的根。春、秋季采挖，除去泥土、须根及根头，晒至六七成干，理直扎捆后晒干。功能主治为：补气固表，托毒排脓，利尿，生肌。用于气虚乏力、久泻脱肛、自汗、水肿、子宫脱垂、慢性肾炎蛋白尿、糖尿病、疮口久不愈合。用法与用量：9-30g。
