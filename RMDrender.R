@@ -1,6 +1,6 @@
 # RMD文件生成
 library(rmarkdown)
-
+options(encoding ="native.enc")
 # 获取当前目录下所有的 RMD 文件
 rmd_files <- list.files(pattern = "\\.Rmd$", full.names = TRUE)
 

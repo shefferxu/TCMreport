@@ -22,12 +22,13 @@ library(lsei)
 library(SuppDists)
 library(dplyr)
 knitr::opts_chunk$set(echo = FALSE,warning=FALSE, message=FALSE)
+
 ```
 
 ```{r, echo=FALSE}
 #--设置污染物名称、食药物质名称、污染物的LOD值、转移率以及单位等
 CurrentName <- knitr::current_input()
-CurrentName <- "铝-金银花.Rmd" #需注释需注释需注释
+# CurrentName <- "铝-金银花.Rmd" #需注释需注释需注释
 CurrentName <- sub(".Rmd","",CurrentName)
 Pollutantname<-gsub("-.*", "", CurrentName)
 TCMname<-gsub(".*-", "", CurrentName)
