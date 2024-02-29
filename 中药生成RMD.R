@@ -35,7 +35,7 @@ for (metal in Metal) {
     
     # 将修改后的内容写回文件
     writeLines(new_content, newRmd)
-    # 渲染RMD文件并导出Word文件
+    # # 渲染RMD文件并导出Word文件
     # srcfile <- newRmd
     # outdoc <- paste(metal, "-", herb, ".docx", sep = "")
     # rmarkdown::render(input = srcfile, output_format = "word_document", output_file = outdoc)
