@@ -33,8 +33,30 @@ for (metal in Metal) {
                      "```",
                      content[(third_newpage_index + 1):length(content)])
     
+    
+    # 寻找包含特定内容的行
+    abstract_lines  <- grep("经过风险评估得到以下结论", new_content)
+    # 判断metal的类型并在特定位置添加描述
+    if (metal == "铝") {
+      # 描述铝的风险评估结论
+      description <- "&emsp;&emsp;铝是人体非必需微量元素，摄入过多会引起生殖毒性、神经毒性等。2011年6月，在JECFA的第74次大会上，委员会依据每日每公斤体重 30mg 的未观察到不良作用水平（NOAEL），并利用 100 倍的安全系数,将铝的 PTWI 修订为每周每公斤体重 2mg。"
+    } else if (metal == "镉") {
+      description <- "&emsp;&emsp;镉是一种有毒重金属，长期摄入会对肾脏、骨骼、肝脏等器官产生损害。根据WHO的标准，人体每周摄入镉的安全量为每公斤体重每周7微克。"
+    } else if (metal == "铬") {
+      description <- "&emsp;&emsp;铬是人体所需的微量元素，但六价铬具有较强的毒性，对皮肤、呼吸道和消化道有刺激作用。根据WHO的标准，铬的可容许摄入量为每公斤体重每周 25 微克。"
+    } else if (metal == "铅") {
+      description <- "&emsp;&emsp;铅是一种有毒重金属，长期摄入会导致神经系统和肾脏等器官受损。根据WHO的标准，铅的可容许摄入量为每公斤体重每周 25 微克。"
+    }
+    # 在每个位置添加描述(倒着跑)
+    for (abstract_line in rev(abstract_lines)) {
+      new_content <- c(new_content[1:(abstract_line-1)],
+                       description,
+                       new_content[abstract_line:length(new_content)])
+    }
     # 将修改后的内容写回文件
     writeLines(new_content, newRmd)
+    
+    
     # # 渲染RMD文件并导出Word文件
     # srcfile <- newRmd
     # outdoc <- paste(metal, "-", herb, ".docx", sep = "")
@@ -42,7 +64,7 @@ for (metal in Metal) {
   }
 }
 
-
+options(encoding ="native.enc")
 # connect database
 # library(RMySQL)
 # conn <- dbConnect(MySQL(),user="root",

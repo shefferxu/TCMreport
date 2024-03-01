@@ -204,7 +204,7 @@ TQp50pm<- round(mean(expp50p)*7/(1000*2),4)
 
 # 摘 要
 
-&emsp;&emsp;铝是人体非必需微量元素，摄入过多会引起生殖毒性、神经毒性等。2011年6月，在JECFA的第74次大会上，委员会依据30 mg/kg bw/day 的未观察到不良作用水平（NOAEL），并利用 100 倍的安全系数,将铝的 PTWI 修订为每周2 mg/kg bw。经过风险评估得到以下结论：（1）`r toString(Pollnum)`份`r toString(TCMname)`中`r toString(Pollutantname)`的检出率为`r toString(Pppercent)`%（`r toString(Pollposnum)`/`r toString(Pollnum)`）。`r toString(Pollutantname)`含量平均值、P50值、P95值分别为`r toString(Pollposmean)` `r toString(Pollunit)`，`r toString(Pollposp50)`  `r toString(Pollunit)`，`r toString(Pollposp95)` `r toString(Pollunit)`。（2）`r toString(TCMname)`中`r toString(Pollutantname)`的每日慢性暴露水平平均值、P50值、P95值分别为`r toString(expmeanpm)` `r toString(expunit)` ，`r toString(expp50pm)` `r toString(expunit)`，`r toString(expp95pm)` `r toString(expunit)`。（3）由`r toString(TCMname)`摄入带来的`r toString(Pollutantname)`风险熵平均值、P50值、P95值分别为`r toString(TQmeanpm)`、`r toString(TQp50pm)`、`r toString(TQp95pm)`。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露水平远远小于健康指导值，风险熵平均值和P95均小于0.02。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露风险较小。
+经过风险评估得到以下结论：（1）`r toString(Pollnum)`份`r toString(TCMname)`中`r toString(Pollutantname)`的检出率为`r toString(Pppercent)`%（`r toString(Pollposnum)`/`r toString(Pollnum)`）。`r toString(Pollutantname)`含量平均值、P50值、P95值分别为`r toString(Pollposmean)` `r toString(Pollunit)`，`r toString(Pollposp50)`  `r toString(Pollunit)`，`r toString(Pollposp95)` `r toString(Pollunit)`。（2）`r toString(TCMname)`中`r toString(Pollutantname)`的每日慢性暴露水平平均值、P50值、P95值分别为`r toString(expmeanpm)` `r toString(expunit)` ，`r toString(expp50pm)` `r toString(expunit)`，`r toString(expp95pm)` `r toString(expunit)`。（3）由`r toString(TCMname)`摄入带来的`r toString(Pollutantname)`风险熵平均值、P50值、P95值分别为`r toString(TQmeanpm)`、`r toString(TQp50pm)`、`r toString(TQp95pm)`。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露水平远远小于健康指导值，风险熵平均值和P95均小于0.02。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露风险较小。
 
 \newpage
 :::{custom-style="Abbre"}
@@ -242,13 +242,7 @@ abbreviations
 
 \newpage
 
-```{r child = '黄芪介绍.Rmd'}
 
-```
-
-```{r child = '铅的危害表征.Rmd'}
-
-```
 
 
 
@@ -387,14 +381,10 @@ gg+
 
 （3）样本代表性
 
-
 &emsp;&emsp;消费量和污染样本数据均来源于上海，如果了解更大区域情况需扩大调查。
-<br/>
-
-
 
 # 7 总结与建议
-&emsp;&emsp;铝是人体非必需微量元素，摄入过多会引起生殖毒性、神经毒性等。2011年6月，在JECFA的第74次大会上，委员会依据每日每公斤体重 30mg 的未观察到不良作用水平（NOAEL），并利用 100 倍的安全系数,将铝的 PTWI 修订为每周每公斤体重 2mg。经过风险评估得到以下结论：
+经过风险评估得到以下结论：
 
 
 &emsp;&emsp;（1）`r toString(Pollnum)`份`r toString(TCMname)`中`r toString(Pollutantname)`的检出率为`r toString(Pppercent)`%（`r toString(Pollposnum)`/`r toString(Pollnum)`）。`r toString(Pollutantname)`含量平均值、中位数、P95值分别为`r toString(Pollposmean)` `r toString(Pollunit)`，`r toString(Pollposp50)`  `r toString(Pollunit)`，`r toString(Pollposp95)` `r toString(Pollunit)`。

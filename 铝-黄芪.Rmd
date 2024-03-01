@@ -1,10 +1,11 @@
 ---
-always_allow_html: yes
+always_allow_html: true
 output:
   word_document:
     reference_docx: template.docx
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -13,7 +14,7 @@ library(flextable)
 library(GGally)
 library(factoextra)
 library(FactoMineR)
-
+library(scales)
 library(fitdistrplus)
 library(MASS)
 library(survival)
@@ -28,7 +29,7 @@ knitr::opts_chunk$set(echo = FALSE,warning=FALSE, message=FALSE)
 ```{r, echo=FALSE}
 #--设置污染物名称、食药物质名称、污染物的LOD值、转移率以及单位等
 CurrentName <- knitr::current_input()
-# CurrentName <- "铝-金银花.Rmd" #需注释需注释需注释
+CurrentName <- "铅-黄芪.Rmd" #需注释需注释需注释
 CurrentName <- sub(".Rmd","",CurrentName)
 Pollutantname<-gsub("-.*", "", CurrentName)
 TCMname<-gsub(".*-", "", CurrentName)
@@ -122,7 +123,8 @@ Pollposmean<-round(mean(Pollpos),1)#阳性污染物浓度数据均值
 #随机生成对数服从正态分布的阳性数据
 concenn1<-rlnorm(Pp*10000,meanlog =abc[["estimate"]][["meanlog"]], sdlog =abc[["estimate"]][["sdlog"]])
 #小于检出限LOD（即，检出值为0）的部分赋值LOD/2
-concenun1<-rep(LOD/2,(1-Pp)*10000)
+repnum <- 10000-10000*Pp
+concenun1<-rep(LOD/2,repnum)
 #concenn1<-sort(concenn1)
 #获得10000个污染数据
 concen<-c(concenun1,concenn1)
@@ -158,7 +160,7 @@ for (i in 1:999)
 {
 set.seed(i)
 #改
-concenn1<-rlnorm(Pp*10000,meanlog = 5.2646368, sdlog = 0.4082)#污染物浓度
+concenn1<-rlnorm(Pp*10000,meanlog = abc[["estimate"]][["meanlog"]], sdlog = abc[["estimate"]][["sdlog"]])#污染物浓度
 concen<-c(concenun1,concenn1)#concenun1不是通过数据模拟生成，不需要修改
 cs1 <- sample(ycs,size = 10000, replace = TRUE)#消费量
 expore<-cbind(expore,cs1*concen*t/(365*63))#这里的concen没经过降序？？
@@ -170,12 +172,12 @@ expp95<-cbind(expp95,quantile(expore[,i+1],0.95))
 expmeanp<-sort(expmean)
 expp50p<-sort(expp50)
 expp95p<-sort(expp95)
-expmeanpl<- round(quantile(expmeanp,0.025),3)
-expmeanpu<- round(quantile(expmeanp,0.975),3)
-expmeanpm<- round(mean(expmeanp),3)
-expp95pl<-round(quantile(expp95p,0.025),2)
-expp95pu<-round(quantile(expp95p,0.975),2)
-expp95pm<-round(mean(expp95p),2)
+expmeanpl<- round(quantile(expmeanp,0.025),4)
+expmeanpu<- round(quantile(expmeanp,0.975),4)
+expmeanpm<- round(mean(expmeanp),4)
+expp95pl<-round(quantile(expp95p,0.025),4)
+expp95pu<-round(quantile(expp95p,0.975),4)
+expp95pm<-round(mean(expp95p),4)
 expp50pl<- round(quantile(expp50p,0.025),4)
 expp50pu<- round(quantile(expp50p,0.975),4)
 expp50pm<- round(mean(expp50p),4)
@@ -202,7 +204,8 @@ TQp50pm<- round(mean(expp50p)*7/(1000*2),4)
 
 # 摘 要
 
-&emsp;&emsp;铝是人体非必需微量元素，摄入过多会引起生殖毒性、神经毒性等。2011年6月，在JECFA的第74次大会上，委员会依据30 mg/kg bw/day 的未观察到不良作用水平（NOAEL），并利用 100 倍的安全系数,将铝的 PTWI 修订为每周2 mg/kg bw。经过风险评估得到以下结论：（1）`r toString(Pollnum)`份`r toString(TCMname)`中`r toString(Pollutantname)`的检出率为`r toString(Pppercent)`%（`r toString(Pollposnum)`/`r toString(Pollnum)`）。`r toString(Pollutantname)`含量平均值、P50值、P95值分别为`r toString(Pollposmean)` `r toString(Pollunit)`，`r toString(Pollposp50)`  `r toString(Pollunit)`，`r toString(Pollposp95)` `r toString(Pollunit)`。（2）`r toString(TCMname)`中`r toString(Pollutantname)`的每日慢性暴露水平平均值、P50值、P95值分别为`r toString(expmeanpm)` `r toString(expunit)` ，`r toString(expp50pm)` `r toString(expunit)`，`r toString(expp95pm)` `r toString(expunit)`。（3）由`r toString(TCMname)`摄入带来的`r toString(Pollutantname)`风险熵平均值、P50值、P95值分别为`r toString(TQmeanpm)`、`r toString(TQp50pm)`、`r toString(TQp95pm)`。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露水平远远小于健康指导值，风险熵平均值和P95均小于0.02。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露风险较小。
+&emsp;&emsp;铝是人体非必需微量元素，摄入过多会引起生殖毒性、神经毒性等。2011年6月，在JECFA的第74次大会上，委员会依据每日每公斤体重 30mg 的未观察到不良作用水平（NOAEL），并利用 100 倍的安全系数,将铝的 PTWI 修订为每周每公斤体重 2mg。
+经过风险评估得到以下结论：（1）`r toString(Pollnum)`份`r toString(TCMname)`中`r toString(Pollutantname)`的检出率为`r toString(Pppercent)`%（`r toString(Pollposnum)`/`r toString(Pollnum)`）。`r toString(Pollutantname)`含量平均值、P50值、P95值分别为`r toString(Pollposmean)` `r toString(Pollunit)`，`r toString(Pollposp50)`  `r toString(Pollunit)`，`r toString(Pollposp95)` `r toString(Pollunit)`。（2）`r toString(TCMname)`中`r toString(Pollutantname)`的每日慢性暴露水平平均值、P50值、P95值分别为`r toString(expmeanpm)` `r toString(expunit)` ，`r toString(expp50pm)` `r toString(expunit)`，`r toString(expp95pm)` `r toString(expunit)`。（3）由`r toString(TCMname)`摄入带来的`r toString(Pollutantname)`风险熵平均值、P50值、P95值分别为`r toString(TQmeanpm)`、`r toString(TQp50pm)`、`r toString(TQp95pm)`。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露水平远远小于健康指导值，风险熵平均值和P95均小于0.02。`r toString(TCMname)`中`r toString(Pollutantname)`的暴露风险较小。
 
 \newpage
 :::{custom-style="Abbre"}
@@ -247,6 +250,8 @@ abbreviations
 ```{r child = '铝的危害表征.Rmd'}
 
 ```
+
+
 
 
 
@@ -320,25 +325,38 @@ $$ EDI=\frac{CS_Y*L_t*t}{BW*365}$$
 
 &emsp;&emsp;未检出浓度以检出限LOD/2计时，`r toString(TCMname)`中`r toString(Pollutantname)`的每日慢性暴露水平平均值`r toString(expmeanpm)` `r toString(expunit)` （95%IC: `r toString(expmeanpl)`-`r toString(expmeanpu)` `r toString(expunit)`，P50值`r toString(expp50pm)` `r toString(expunit)`（95%IC: `r toString(expp50pl)` - `r toString(expp50pu)` `r toString(expunit)`，P95值`r toString(expp95pm)` `r toString(expunit)` （95%IC: `r toString(expp95pl)`-`r toString(expp95pu)` `r toString(expunit)`）。
 
-```{r Shownothing, include=FALSE}
-h3<-hist(expore[,1],probability=F,xlab = expunit,breaks=500,col="blue")
-```
 
 ```{r}
-h3$counts=h3$counts/sum(h3$counts)
-plot(h3,main="",
-     xlab= expunit,
-     ylab="Probability",col = "blue",border = T,
-     xlim = c(0,2*expp95pm),
-     ylim=c(0,max(h3$counts))*1.2
-)
+# h3<-hist(expore[,1],probability=F,xlab = expunit,breaks=500,col="blue")
+# h3$counts=h3$counts/sum(h3$counts)
+# 计算 expore 列的 97 分位数
+plotdata <- expore %>% as.data.frame()
+expore_97_quantile <- quantile(plotdata$expore, 0.98)
+gg <- ggplot(plotdata, aes(x = expore)) +
+geom_histogram(stat = "density", fill="#66CCCC",color = "#66CCCC",binwidth = 30)+
+  scale_x_continuous(expand = c(0, 0),
+                     limits = c(0, expore_97_quantile)) +
+  scale_y_continuous(expand = c(0, 0),
+                     labels =label_number(accuracy = 0.01, scale = 1/10000))+
+  labs(
+    x = expunit,
+    y = "Probability",
+    title = "",
+    # xlim = c(0, 2 * expp95pm),
+    # ylim = c(0, max(h3$counts) * 1.2)
+  ) +
+  geom_vline(xintercept = c(expp50[1], expmean[1], expp95[1]), linetype = c(2, 3, 4), color = c("green", "orange", "red"), size = c(1, 1, 1)) 
 
-A12<-paste(c("p50 ","mean","p95 "),
-           c(round(expp50[1],3),round(expmean[1],3),round(expp95[1],3)),
-           sep=":")
-abline(v = c(expp50[1],expmean[1],expp95[1]),lty = c(2,3,4),lwd = c(2,2,2),col=c("green","orange","red"))
-legend("topright",
-       legend=A12,col=c("green","orange","red"),lty = c(2,3,4),lwd = c(1,1,1),cex=0.7)
+gg+
+# annotate("text", x = expore_97_quantile, y = max(ggplot_build(gg)$data[[1]]$density),
+#            label = paste0("p50:", round(expp50[1], 3), "\n", "mean:", round(expmean[1], 3), "\n", "p95:", round(expp95[1], 3)),hjust = 1, vjust = 1)+
+#     geom_vline(xintercept = c(expp50[1], expmean[1], exp95[1]), linetype = c(2, 3, 4), 
+#              color = c("yellow", "green", "red"), size = c(1, 1, 1)) +
+  annotate("text", x = expore_97_quantile, y = max(ggplot_build(gg)$data[[1]]$density), 
+           label = paste0("p50:green", "\n", "mean:yellow", "\n", "p95:red"),
+           hjust = 1, vjust = 1) +
+  theme_minimal() 
+
 ```
 
 
@@ -372,14 +390,11 @@ legend("topright",
 
 （3）样本代表性
 
-
 &emsp;&emsp;消费量和污染样本数据均来源于上海，如果了解更大区域情况需扩大调查。
-<br/>
-
-
 
 # 7 总结与建议
-&emsp;&emsp;铝是人体非必需微量元素，摄入过多会引起生殖毒性、神经毒性等。2011年6月，在JECFA的第74次大会上，委员会依据每日每公斤体重 30mg 的未观察到不良作用水平（NOAEL），并利用 100 倍的安全系数,将铝的 PTWI 修订为每周每公斤体重 2mg。经过风险评估得到以下结论：
+&emsp;&emsp;铝是人体非必需微量元素，摄入过多会引起生殖毒性、神经毒性等。2011年6月，在JECFA的第74次大会上，委员会依据每日每公斤体重 30mg 的未观察到不良作用水平（NOAEL），并利用 100 倍的安全系数,将铝的 PTWI 修订为每周每公斤体重 2mg。
+经过风险评估得到以下结论：
 
 
 &emsp;&emsp;（1）`r toString(Pollnum)`份`r toString(TCMname)`中`r toString(Pollutantname)`的检出率为`r toString(Pppercent)`%（`r toString(Pollposnum)`/`r toString(Pollnum)`）。`r toString(Pollutantname)`含量平均值、中位数、P95值分别为`r toString(Pollposmean)` `r toString(Pollunit)`，`r toString(Pollposp50)`  `r toString(Pollunit)`，`r toString(Pollposp95)` `r toString(Pollunit)`。
